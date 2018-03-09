@@ -1,0 +1,224 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Evolución y comparación de series de datos</title>
+    <link href="fundamentales.css" rel="stylesheet" type="text/css">
+    <!--script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://apis.google.com/js/client:plusone.js" type="text/javascript"></script-->
+    <script language="javascript" type="text/javascript" src="jquery.js"></script>
+    <script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+    <script language="javascript" type="text/javascript" src="datos.js"></script>
+    <script language="javascript" type="text/javascript" src="series.js"></script>
+    <!-- Cargamos todos los datos -->
+    <!--script src="https://spreadsheets.google.com/feeds/cells/1aqUcciExhpOpFWxUM3KlJmJvHbHoFecwWL4IpzBNVNU/1/public/values?alt=json-in-script&callback=cargaDatosGoogle"/-->
+    <!--script src="https://spreadsheets.google.com/feeds/cells/1aqUcciExhpOpFWxUM3KlJmJvHbHoFecwWL4IpzBNVNU/2/public/values?alt=json-in-script&callback=cargaDatosGoogle"/>
+    <script src="https://spreadsheets.google.com/feeds/cells/1aqUcciExhpOpFWxUM3KlJmJvHbHoFecwWL4IpzBNVNU/3/public/values?alt=json-in-script&callback=cargaDatosGoogle"/>
+    <script src="https://spreadsheets.google.com/feeds/cells/1aqUcciExhpOpFWxUM3KlJmJvHbHoFecwWL4IpzBNVNU/4/public/values?alt=json-in-script&callback=cargaDatosGoogle"/-->
+
+    <script type="text/javascript">
+        // Javascript a ejecutar una vez el DOM está listo
+        $(function () {
+            cargaHoja(1);
+        });
+
+
+        /** 
+         * Crea una opción en el combo de selección de empresa, y crea el div que se mostrará cuando dicha opción sea seleccionada.
+         */
+        function crearDiv(nombreEmpresaID,nombreEmpresaTexto)
+        {
+            var comboEmpresas = $("#empresa");
+            var choiceContainer = $("#choices");
+
+            // 1) Creamos opción en el select
+            comboEmpresas.append($('<option>', {
+                    value: nombreEmpresaID,
+                    text: nombreEmpresaTexto
+                }));
+
+            // 2) Creamos div que contiene las opciones para cada empresa, y la cabecera de la tabla de opciones.
+            //    Después (en creaOpciones) se recorrerá la lista de funciones disponibles, y se creará una fila de opciones para la serie correspondiente a cada función.
+            choiceContainer.append("<div id='div"+nombreEmpresaID+"'>");
+            choiceContainer.append("</div>");
+            var divEmpresa = $("#div"+nombreEmpresaID);  // Este es el div como variable
+            divEmpresa.addClass("classEmpresas");
+            divEmpresa.append($("<table id='tbl"+nombreEmpresaID+"' border='1' width='100%'/>")
+                        .append($('<tr>')
+                            .append($('<td style="text-align: center; vertical-align: middle">'))
+                            .append($('<td style="text-align: center; vertical-align: middle">')
+                                .append("Lineas"))
+                            .append($('<td style="text-align: center; vertical-align: middle">')
+                                .append("Barras"))
+                            .append($('<td style="text-align: center; vertical-align: middle">')
+                                .append("Variación"))));
+        }
+
+        /**
+         * Mete en el div de la empresa, en la tabla correspondiente, una fila para las opciones de la serie.
+         */
+        function creaOpciones(empresa,clave,etiqueta) {
+            var div = $("#tbl"+empresa);
+            div.append($('<tr>')
+                .append($('<td>')
+                    .append($("<input type='checkbox' name='" + clave + "' id='id" + clave + "' "+(getCookie("id"+clave)?"checked":"")+" onClick='actualizaSerie(\""+clave+"\")'/>"))
+                    .append($("<label for='id" + clave + "'>" + etiqueta + "</label>")))
+                .append($('<td style="text-align: center; vertical-align: middle">')
+                    .append($("<input type='radio' name='radio"+clave+"' id='linea"+clave+"' "+(!getCookie("barra"+clave)?"checked":"")+" onClick='actualizaSerie(\""+clave+"\")'/>")))
+                .append($('<td style="text-align: center; vertical-align: middle">')
+                    .append($("<input type='radio' name='radio"+clave+"' id='barra"+clave+"' "+(getCookie("barra"+clave)?"checked":"")+" onClick='actualizaSerie(\""+clave+"\")'/>")))
+                .append($('<td style="text-align: center; vertical-align: middle">')
+                    .append($("<input type='checkbox' name='var"+clave+"' id='var"+clave+"' "+(getCookie("var"+clave)?"checked":"")+" onClick='actualizaSerie(\""+clave+"\")'/>"))));
+            
+            if (getCookie("id"+clave)) {
+                actualizaSerie(clave);
+            }
+        }
+
+
+        /**
+         * Cuando se cambie una opción de una serie (ver/ocultar, tipo,...), se invocará a esta función que revisará todas las opciones y actualizará los parámetros correspondientes de la serie.
+         */
+        function actualizaSerie(nombreSerie) {
+            // Opciones de la empresa
+            var id     = $('#id'+nombreSerie);
+            var lineas = $('#linea'+nombreSerie);
+            var barras = $('#barra'+nombreSerie);
+            var variac = $('#var'+nombreSerie);
+
+            // Lo primero, guardamos cookies
+            /* Las cookies en Chrome no funcionan con html locales :-( */
+            setCookie("id"+nombreSerie,id[0].checked);
+            setCookie("linea"+nombreSerie,lineas[0].checked);
+            setCookie("barra"+nombreSerie,barras[0].checked);
+            setCookie("var"+nombreSerie,variac[0].checked);
+            //console.log("Guardando cookies ["+document.cookie+"]");
+            
+            var serie = series[nombreSerie];
+            var serieVar = series[nombreSerie+"var"];
+
+            // Primero comprobamos si la serie está marcada para dibujar (y qué serie: la normal o la de variación)
+            if (id[0].checked && !variac[0].checked) {
+                // Nos aseguramos de que la serie normal se dibuja
+                if ($.inArray(serie, seriesDibujar)==-1) {
+                    seriesDibujar.push(serie);
+                }
+                // Y nos aseguramos de que la de variación no se dibuja
+                if ($.inArray(serieVar, seriesDibujar)>-1) {
+                    seriesDibujar.splice($.inArray(serieVar, seriesDibujar),1);
+                }
+            }
+
+            if (id[0].checked && variac[0].checked) {
+                // Nos aseguramos de que la serie normal no se dibuja
+                if ($.inArray(serie, seriesDibujar)>-1) {
+                    seriesDibujar.splice($.inArray(serie, seriesDibujar),1);
+                }
+                // Y nos aseguramos de que la de variación sí se dibuja
+                if ($.inArray(serieVar, seriesDibujar)==-1) {
+                    seriesDibujar.push(serieVar);
+                }
+            }
+
+            // Y si la serie no está seleccionada, nos aseguramos de que ambas series no se ven
+            if (!id[0].checked) {
+                if ($.inArray(serie, seriesDibujar)>-1) {
+                    seriesDibujar.splice($.inArray(serie, seriesDibujar),1);
+                }
+                if ($.inArray(serieVar, seriesDibujar)>-1) {
+                    seriesDibujar.splice($.inArray(serieVar, seriesDibujar),1);
+                }
+            } 
+
+            // Ahora revisamos lineas y barras
+            if (!variac[0].checked) {
+                serie.lines.show = lineas[0].checked;
+                serie.bars.show  = barras[0].checked;
+            } else {
+                serieVar.lines.show = lineas[0].checked;
+                serieVar.bars.show  = barras[0].checked;
+            }
+
+            // Una vez actualizado todo, dibujamos.
+            dibujar('divGrafica','tooltip');
+        }
+
+
+        /**
+         * Recorremos la lista de divs de cada empresa, y ocultamos todas menos la seleccionada.
+         */
+        function showDiv(elem) {
+            console.log("showDiv "+elem.value);
+            var listaOpciones = $("#empresa").children();
+            for (var i=0; i<listaOpciones.length; i++) {
+                var empresa = listaOpciones[i].value;
+                if (elem.value==empresa) {
+                    $("#div"+empresa).show();
+                } else {
+                    $("#div"+empresa).hide();
+                }
+            }
+        }
+
+
+
+        function getCookie(cname) {
+            var name = cname + "=";
+            var decodedCookie = decodeURIComponent(document.cookie);
+            var ca = decodedCookie.split(';');
+            for(var i = 0; i <ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1);
+                }
+                if (c.indexOf(name) == 0) {
+                    return c.substring(name.length, c.length);
+                }
+            }
+            return null;
+        }        
+
+        /**
+         * Si la cookie tiene valor (true), la guardamos; si no, borramos.
+         */
+        function setCookie(cname, cvalue) {
+            if (cvalue) {
+                var d = new Date();
+                d.setTime(d.getTime() + (365*24*60*60*1000));
+                var expires = "expires="+ d.toUTCString();
+                document.cookie = cname + "=" + cvalue + ";" + expires;// + ";path=/";
+            } else {
+                document.cookie = cname +"=;expires=Thu, 01 Jan 1970 00:00:01 GMT";//path=/";
+            }
+        }
+    </script>
+</head>
+
+
+
+<body>
+    <!-- Por si queremos cabecera -->
+    <div id="header"></div>
+
+    <!-- Grafico + Sección de opciones -->
+    <div class="demo-container">
+        <div id="divGrafica"></div>
+        <p id="choices" border="1">
+            <select id="empresa" onclick="showDiv(this)"></select>
+        </p>
+    </div>
+
+    <!-- div flotante para mostrar tooltip -->
+    <div id='tooltip' style='position: absolute;display: none; border: 1px solid #fdd; padding:2px;background-color: #fee; opacity: 0.80' />
+    
+    <!-- Por si queremos pie de página -->
+    <div id="footer"></div>
+
+    <!--script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script-->
+</body>
+
+</html>

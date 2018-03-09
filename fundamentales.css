@@ -1,0 +1,54 @@
+* {	padding: 0; margin: 0; vertical-align: top; }
+
+#content {
+	/*width: 1024px;*/
+	margin: 0 auto;
+	padding: 10px;
+}
+
+.demo-container {
+	box-sizing: border-box;
+	width: 1024px;
+	height: 600px;
+	padding: 20px 15px 15px 15px;
+	margin: 15px auto 30px auto;
+	border: 1px solid #ddd;
+	background: #fff;
+	background: linear-gradient(#f6f6f6 0, #fff 50px);
+	background: -o-linear-gradient(#f6f6f6 0, #fff 50px);
+	background: -ms-linear-gradient(#f6f6f6 0, #fff 50px);
+	background: -moz-linear-gradient(#f6f6f6 0, #fff 50px);
+	background: -webkit-linear-gradient(#f6f6f6 0, #fff 50px);
+	box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+	-o-box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+	-ms-box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+	-moz-box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+	-webkit-box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+#divGrafica {
+	width: 674px;
+	height: 100%;
+	float:left;
+	font-size: 14px;
+	line-height: 1.2em;
+}
+
+
+#choices {
+	float: right;
+	width: 310px;
+	height: 560px;
+	font-family: Verdana, Geneva, Tahoma, sans-serif;
+	font-size: 14px;
+	/*overflow-y: scroll;*/
+}
+
+#empresa {
+    width: 100%
+}
+
+.classEmpresas {
+	height: 542px;
+	overflow-y: scroll;
+}
